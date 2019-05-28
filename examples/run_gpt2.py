@@ -49,6 +49,9 @@ def do_beam_search(model, length, start_token=None, batch_size=None, context=Non
         all_logprobs = []
         all_words = []
         for seq, state in zip(seq_so_far, current_state):
+            if state is not None:
+              # Model only expects the sequence tokens it has not seen before.
+              seq = seq[:, -1].unsqueeze(0)
             logits, state = model(seq, past=state)
             logits = logits.select(1, -1).contiguous()
             logprobs = log_softmax(logits, dim=1)
@@ -210,11 +213,7 @@ def run_model():
     np.random.seed(args.seed)
     torch.random.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
-    if args.do_beam_search:
-        # TODO(daphne): Fix out-of-memory errors when running on GPU.
-        device = torch.device("cpu")
-    else:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     enc = GPT2Tokenizer.from_pretrained(args.model_name_or_path)
     model = GPT2LMHeadModel.from_pretrained(args.model_name_or_path)
